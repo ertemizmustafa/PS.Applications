@@ -9,6 +9,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AspNetCore.HealthChecks.Prometheus.Metrics" Version="5.0.1" />
+    <PackageReference Include="AspNetcore.HealthChecks.Publisher.ApplicationInsights" Version="5.0.1" />
+    <PackageReference Include="AspNetcore.HealthChecks.Publisher.Datadog" Version="5.0.1" />
+    <PackageReference Include="AspNetcore.HealthChecks.Publisher.Prometheus" Version="5.0.1" />
+    <PackageReference Include="AspNetcore.HealthChecks.Publisher.Seq" Version="5.0.1" />
     <PackageReference Include="AutoMapper" Version="10.1.1" />
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="8.1.1" />
     <PackageReference Include="MailKit" Version="3.0.0" />

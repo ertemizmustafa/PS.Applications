@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PS.Notification.Domain.Entities;
-using System;
 
 namespace PS.Notification.Infrastructure.Data.Configurations
 {

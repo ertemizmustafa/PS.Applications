@@ -1,5 +1,4 @@
-﻿using PS.Notification.Domain.Entities;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace PS.Notification.Application.Abstract
 {

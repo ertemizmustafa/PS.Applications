@@ -1,10 +1,10 @@
+using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using PS.Core.Settings;
@@ -35,13 +35,20 @@ namespace PS.Notification.Api
 
             services.AddApplication(mailSettings, rabbitMqSettings);
 
-            services.AddHealthChecks();
 
-            services.Configure<HealthCheckPublisherOptions>(options =>
+
+            services.AddHealthChecks()
+                    .AddProcessAllocatedMemoryHealthCheck(maximumMegabytesAllocated: 200, tags: new[] { "memory" })
+                    .AddNpgSql(npgsqlConnectionString: Configuration.GetConnectionString("Default"), tags: new string[] { "Notification Db" })
+                    .AddRabbitMQ(rabbitConnectionString: rabbitMqSettings.Host)
+                    .AddUrlGroup(new Uri("https://localhost:44341/mail"));
+
+            services.AddHealthChecksUI(setupSettings: setup =>
             {
-                options.Delay = TimeSpan.FromSeconds(2);
-                options.Predicate = (check) => check.Tags.Contains("ready");
-            });
+                setup.MaximumHistoryEntriesPerEndpoint(50);
+                setup.SetApiMaxActiveRequests(1);
+                setup.SetEvaluationTimeInSeconds(10); //Configures the UI to poll for healthchecks updates every 5 seconds
+            }).AddInMemoryStorage();
 
             services.AddSwaggerGen(c =>
             {
@@ -72,15 +79,23 @@ namespace PS.Notification.Api
                     await context.Response.WriteAsync("PS Notification API!");
                 });
 
-                endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions()
+                endpoints.MapHealthChecks("healthz", new HealthCheckOptions()
                 {
-                    Predicate = (check) => check.Tags.Contains("ready"),
+                    Predicate = _ => true,
+                    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
                 });
 
-                endpoints.MapHealthChecks("/health/live", new HealthCheckOptions());
+                endpoints.MapHealthChecksUI(setup =>
+                {
+                    setup.UIPath = "/show-health-ui"; // this is ui path in your browser
+                    setup.ApiPath = "/health-ui-api"; // the UI ( spa app )  use this path to get information from the store ( this is NOT the healthz path, is internal ui api )
+                });
+
 
                 endpoints.MapControllers();
             });
         }
     }
+
+
 }

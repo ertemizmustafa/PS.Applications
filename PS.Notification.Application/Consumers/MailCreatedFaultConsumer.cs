@@ -8,13 +8,13 @@ using System.Threading.Tasks;
 
 namespace PS.Notification.Application.Consumers
 {
-    public class MailSentFaultConsumer : IConsumer<Fault<IMailCreatedEvent>>
+    public class MailCreatedFaultConsumer : IConsumer<Fault<IMailCreatedEvent>>
     {
 
         private readonly ILogger<MailSentConsumer> _logger;
         private readonly IMailService _mailService;
 
-        public MailSentFaultConsumer(ILogger<MailSentConsumer> logger, IMailService mailService)
+        public MailCreatedFaultConsumer(ILogger<MailSentConsumer> logger, IMailService mailService)
         {
             _logger = logger;
             _mailService = mailService;

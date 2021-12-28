@@ -10,7 +10,6 @@ namespace PS.Notification.Application.Consumers
     public class MailCreatedConsumer : IConsumer<IMailCreatedEvent>
     {
         private readonly ILogger<MailCreatedConsumer> _logger;
-        private readonly IMailService _notificationMailService;
         private readonly INotificationService _notificationService;
 
         public MailCreatedConsumer(ILogger<MailCreatedConsumer> logger, INotificationService notificationService)
@@ -24,7 +23,7 @@ namespace PS.Notification.Application.Consumers
         {
             _logger.LogInformation("Value: {Message}", context.Message);
             await _notificationService.SendEmailAsync(context.Message.MailId);
-            //throw new Exception("Send to fault pls");
+          //  throw new Exception("Send to fault pls");
             await context.Publish<IMailSentEvent>(new { context.Message.CorrelationId, context.Message.MailId, SentTime = DateTime.Now });
         }
     }

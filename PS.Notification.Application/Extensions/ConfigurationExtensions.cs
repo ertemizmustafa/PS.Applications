@@ -42,7 +42,7 @@ namespace PS.Notification.Application.Extensions
 
                 });
 
-                x.AddConsumer<MailSentFaultConsumer>(c =>
+                x.AddConsumer<MailCreatedFaultConsumer>(c =>
                 {
                     c.UseMessageRetry(r =>
                     {

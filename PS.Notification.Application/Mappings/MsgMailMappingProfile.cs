@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using PS.Notification.Abstractions;
 using PS.Notification.Application.Dtos;
 using PS.Notification.Domain.Entities;
 using System.Collections.Generic;
@@ -10,17 +11,22 @@ namespace PS.Notification.Application.Mappings
     {
         public MsgMailMappingProfile()
         {
-            CreateMap<CreateMailRequest, MsgMail>()
-                .ForMember(d => d.ExternalId, o => o.MapFrom(x => x.ExternalId))
-                .ForMember(d => d.ApplicationName, o => o.MapFrom(x => x.ApplicationName))
-                .ForMember(d => d.FromDisplayName, o => o.MapFrom(x => x.FromDisplayName))
-                .ForMember(d => d.From, o => o.MapFrom(x => x.From))
-                .ForMember(d => d.Subject, o => o.MapFrom(x => x.Subject))
-                .ForMember(d => d.Body, o => o.MapFrom(x => x.Body))
-                .ForMember(d => d.To, o => o.MapFrom(x => string.Join(';', x.To)))
-                .ForMember(d => d.Cc, o => o.MapFrom(x => string.Join(';', x.Cc)));
-            CreateMap<CreateMailRequest, IEnumerable<MsgMailAttachment>>()
-                   .ConstructUsing(s => s.MailAttachments.Select(x => new MsgMailAttachment { Name = x.Name, Content = x.Content }));
+            CreateMap<CreateMailCommand, MsgMail>()
+                    .ForMember(d => d.ApplicationName, o => o.MapFrom(x => x.ApplicationName))
+                    .ForMember(d => d.FromMailAddress, o => o.MapFrom(x => x.From.MailAddress))
+                    .ForMember(d => d.FromDisplayName, o => o.MapFrom(x => x.From.DisplayName))
+                    .ForMember(d => d.Subject, o => o.MapFrom(x => x.Subject))
+                    .ForMember(d => d.Body, o => o.MapFrom(x => x.Body))
+                    .ForMember(d => d.ToRecipients, o => o.MapFrom(x => string.Join(",", x.ToRecipients.Select(x => x.MailAddress))))
+                    .ForMember(d => d.CcRecipients, o => o.MapFrom(x => string.Join(",", x.CcRecipients.Select(x => x.MailAddress))));
+            CreateMap<CreateMailCommand, IEnumerable<MsgMailAttachment>>()
+                     .ConstructUsing(s => s.MailAttachments.Select(x => new MsgMailAttachment { Name = x.Name, Content = x.Content }));
+
+            CreateMap<MsgMail, MailSentInfoResposeDto>()
+                .ForMember(d => d.MailId, o => o.MapFrom(x => x.Id))
+                .ForMember(d => d.IsSent, o => o.MapFrom(x => x.IsSent))
+                .ForMember(d => d.HasSentError, o => o.MapFrom(x => !string.IsNullOrEmpty(x.ErrorMessage)))
+                .ForMember(d => d.SentTime, o => o.MapFrom(x => x.SentTime));
         }
     }
 }

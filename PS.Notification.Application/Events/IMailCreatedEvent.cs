@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PS.Notification.Abstractions;
+using System;
 
 namespace PS.Notification.Application.Events
 {
@@ -6,5 +7,6 @@ namespace PS.Notification.Application.Events
     {
         int MailId { get; }
         Guid CorrelationId { get; }
+        CreateMailCommand MailCommand { get; }
     }
 }

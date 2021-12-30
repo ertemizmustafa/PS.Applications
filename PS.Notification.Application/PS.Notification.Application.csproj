@@ -22,7 +22,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PS.Core\PS.Core.csproj" />
+    <ProjectReference Include="..\PS.Notification.Abstractions\PS.Notification.Abstractions.csproj" />
+    <ProjectReference Include="..\PS.Notification.Configurations\PS.Notification.Configurations.csproj" />
     <ProjectReference Include="..\PS.Notification.Infrastructure\PS.Notification.Infrastructure.csproj" />
   </ItemGroup>
 

@@ -23,8 +23,10 @@ namespace PS.Notification.Application.Consumers
 
         public async Task Consume(ConsumeContext<Fault<IMailCreatedEvent>> context)
         {
-            _logger.LogInformation("Value: {Message}", context.Message);
-            await _mailService.UpdateMailSentInfoAsync(context.Message.Message.MailId, false, DateTime.Now, string.Join(",", context.Message.Exceptions?.Select(x => x.Message).ToArray()));
+            _logger.LogInformation($"Consumer: {nameof(MailCreatedFaultConsumer)}, AttempCount: {context.GetRetryCount()}, Message: {context.Message}, CorrelationId: {context.CorrelationId}");
+            _logger.LogInformation($"Updating database for mail sent error information..");
+            var result = await _mailService.UpdateMailSentInfoAsync(context.Message.Message.MailId, false, DateTime.Now, string.Join(",", context.Message.Exceptions?.Select(x => x.Message).ToArray()));
+            _logger.LogInformation($"Updated sent error information.. Result: {result}");
         }
     }
 }

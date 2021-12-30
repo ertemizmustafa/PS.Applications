@@ -3,10 +3,9 @@ using MailKit.Net.Smtp;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using MimeKit;
-using PS.Core.Concrete;
+using PS.Notification.Abstractions;
 using PS.Notification.Application.Abstract;
 using PS.Notification.Application.Dtos;
-using PS.Notification.Application.Events;
 using PS.Notification.Application.Settings;
 using PS.Notification.Domain.Entities;
 using PS.Notification.Infrastructure.Data;
@@ -21,66 +20,66 @@ namespace PS.Notification.Application.Services
         private readonly NotificationDbContext _dbContext;
         private readonly IMapper _mapper;
         private readonly MailSettings _mailSettings;
-        private readonly IPublishEndpoint _publishEndpoint;
 
 
-        public MailService(NotificationDbContext dbContext, IMapper mapper, MailSettings mailSettings, IPublishEndpoint publishEndpoint)
+        public MailService(NotificationDbContext dbContext, IMapper mapper, MailSettings mailSettings)
         {
             _dbContext = dbContext;
             _mapper = mapper;
-            _publishEndpoint = publishEndpoint;
             _mailSettings = mailSettings;
         }
 
-        public async Task<Result<int>> CreateMailAsync(CreateMailRequest mailRequest)
+        public async Task<int> CreateMailAsync(CreateMailCommand sendMailCommand)
         {
-            var entity = _mapper.Map<MsgMail>(mailRequest);
+            var entity = _mapper.Map<MsgMail>(sendMailCommand);
             await _dbContext.MsgMails.AddAsync(entity);
             await _dbContext.SaveChangesAsync();
-            await _publishEndpoint.Publish<IMailCreatedEvent>(new { CorrelationId = Guid.NewGuid(), MailId = entity.Id });
-            return Result<int>.Success(entity.Id);
+            return entity.Id;
         }
 
-        public async Task<Result<int>> UpdateMailSentInfoAsync(int id, bool isSend, DateTime sentTime, string errorMessage = "")
+        public async Task<bool> UpdateMailSentInfoAsync(int id, bool isSent, DateTime sentTime, string errorMessage = "")
         {
-            var result = await GetMailAsync(id);
-            result.Data.IsSent = isSend;
-            result.Data.SendTime = sentTime;
-            result.Data.ErrorMessage = errorMessage;
-            _dbContext.Update(result.Data);
-            return Result<int>.Success(await _dbContext.SaveChangesAsync());
+            var result = await _dbContext.MsgMails.Include(p => p.MailAttachments).FirstOrDefaultAsync(x => x.Id == id);
+            result.IsSent = isSent;
+            result.SentTime = sentTime;
+            result.ErrorMessage = errorMessage;
+            _dbContext.Update(result);
+            return await _dbContext.SaveChangesAsync() > 0;
         }
 
-        public async Task<Result<MsgMail>> GetMailAsync(int id)
+        public async Task<MailSentInfoResposeDto> GetMailSentInformationAsync(int id)
         {
-            return Result<MsgMail>.Success(await _dbContext.MsgMails.Include(p => p.MailAttachments).FirstOrDefaultAsync(x => x.Id == id));
+            return _mapper.Map<MailSentInfoResposeDto>(await _dbContext.MsgMails.FirstOrDefaultAsync(x => x.Id == id));
         }
 
-        public async Task<Result<MsgMail>> GetMailAsync(string externalId)
+        public async Task SendSmtpMailAsync(CreateMailCommand mailCommand)
         {
-            return Result<MsgMail>.Success(await _dbContext.MsgMails.Include(p => p.MailAttachments).FirstOrDefaultAsync(x => x.ExternalId == externalId));
+            var mimeMessage = GetMimeMessage(mailCommand);
+            using var smtpClient = new SmtpClient();
+            await smtpClient.ConnectAsync(_mailSettings.Host, _mailSettings.Port);
+            await smtpClient.AuthenticateAsync(_mailSettings.UserName, _mailSettings.Password);
+            await smtpClient.SendAsync(mimeMessage);
+            await smtpClient.DisconnectAsync(true);
         }
 
-        public async Task SendSmtpMailAsync(MsgMail msgMail)
+        private MimeMessage GetMimeMessage(CreateMailCommand mailCommand)
         {
-            var email = new MimeMessage
+            var mimeMessage = new MimeMessage();
+            mimeMessage.Sender = MailboxAddress.Parse(_mailSettings.UserName);
+            mimeMessage.From.Add(new MailboxAddress(mailCommand.From.DisplayName, mailCommand.From.MailAddress));
+            mailCommand.ToRecipients?.Select(x => x.MailAddress)?.ToList().ForEach(item => mimeMessage.To.Add(MailboxAddress.Parse(item)));
+            mimeMessage.Subject = mailCommand.Subject;
+
+            var builder = new BodyBuilder
             {
-                Subject = msgMail.Subject,
-                Body = new BodyBuilder
-                {
-                    HtmlBody = msgMail.Body
-                }.ToMessageBody()
+                HtmlBody = mailCommand.Body
             };
 
-            email.From.Add(new MailboxAddress(msgMail.FromDisplayName, msgMail.From));
-            msgMail.To?.Split(",")?.ToList().ForEach(item => email.To.Add(MailboxAddress.Parse(item)));
-            msgMail.Cc?.Split(",")?.ToList().ForEach(item => email.Cc.Add(MailboxAddress.Parse(item)));
+            mailCommand.MailAttachments?.ToList()?.ForEach(item => builder.Attachments.Add(item.Name, item.Content));
+            mimeMessage.Body = builder.ToMessageBody();
 
-            using var smtp = new SmtpClient();
-            smtp.Connect(_mailSettings.Host, _mailSettings.Port);
-            smtp.Authenticate(_mailSettings.UserName, _mailSettings.Password);
-            var res = await smtp.SendAsync(email);
-            smtp.Disconnect(true);
+            return mimeMessage;
         }
+
     }
 }

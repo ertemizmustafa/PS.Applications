@@ -2,11 +2,11 @@
 using MassTransit;
 using MassTransit.Definition;
 using Microsoft.Extensions.DependencyInjection;
-using PS.Core.Settings;
 using PS.Notification.Application.Abstract;
 using PS.Notification.Application.Consumers;
 using PS.Notification.Application.Services;
 using PS.Notification.Application.Settings;
+using PS.Notification.Configurations;
 using System;
 using System.Reflection;
 
@@ -19,12 +19,29 @@ namespace PS.Notification.Application.Extensions
         {
             services.AddAutoMapper(Assembly.GetExecutingAssembly());
             services.AddSingleton(mailSettings);
-            services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IMailService, MailService>();
 
             services.AddMassTransit(x =>
             {
                 //x.AddConsumers(Assembly.GetExecutingAssembly());
+
+                x.AddConsumer<MailCreateConsumer>(c =>
+                {
+                    c.UseMessageRetry(r =>
+                    {
+
+                        r.Intervals(100, 500, 1000, 2000, 5000);
+                    });
+
+                    c.UseCircuitBreaker(cb =>
+                    {
+                        cb.TripThreshold = 15;
+                        cb.ActiveThreshold = 10;
+                        cb.ResetInterval = TimeSpan.FromMinutes(5);
+                    });
+
+                });
+
                 x.AddConsumer<MailCreatedConsumer>(c =>
                 {
                     c.UseMessageRetry(r =>

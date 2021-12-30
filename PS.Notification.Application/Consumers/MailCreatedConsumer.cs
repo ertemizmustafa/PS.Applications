@@ -10,21 +10,23 @@ namespace PS.Notification.Application.Consumers
     public class MailCreatedConsumer : IConsumer<IMailCreatedEvent>
     {
         private readonly ILogger<MailCreatedConsumer> _logger;
-        private readonly INotificationService _notificationService;
+        private readonly IMailService _mailService;
 
-        public MailCreatedConsumer(ILogger<MailCreatedConsumer> logger, INotificationService notificationService)
+        public MailCreatedConsumer(ILogger<MailCreatedConsumer> logger, IMailService mailService)
         {
             _logger = logger;
-            _notificationService = notificationService;
-
+            _mailService = mailService;
         }
 
         public async Task Consume(ConsumeContext<IMailCreatedEvent> context)
         {
-            _logger.LogInformation("Value: {Message}", context.Message);
-            await _notificationService.SendEmailAsync(context.Message.MailId);
-          //  throw new Exception("Send to fault pls");
+            _logger.LogInformation($"Consumer: {nameof(MailCreatedConsumer)}, AttempCount: {context.GetRetryCount()}, Message: {context.Message}, CorrelationId: {context.CorrelationId}");
+            _logger.LogInformation($"Sending mail with smtp client...");
+            await _mailService.SendSmtpMailAsync(context.Message.MailCommand);
+            _logger.LogInformation($"Successfully sent mail with smtp client...");
+            _logger.LogInformation($"Publishing {nameof(IMailSentEvent)}..");
             await context.Publish<IMailSentEvent>(new { context.Message.CorrelationId, context.Message.MailId, SentTime = DateTime.Now });
+            _logger.LogInformation($"Published {nameof(IMailSentEvent)}..");
         }
     }
 }

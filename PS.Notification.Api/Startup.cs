@@ -7,10 +7,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
-using PS.Core.Settings;
 using PS.Notification.Application.Extensions;
 using PS.Notification.Application.Settings;
+using PS.Notification.Configurations;
 using PS.Notification.Infrastructure.Extensions;
+using Swashbuckle.AspNetCore.SwaggerUI;
 using System;
 
 namespace PS.Notification.Api
@@ -41,7 +42,7 @@ namespace PS.Notification.Api
                     .AddProcessAllocatedMemoryHealthCheck(maximumMegabytesAllocated: 200, tags: new[] { "memory" })
                     .AddNpgSql(npgsqlConnectionString: Configuration.GetConnectionString("Default"), tags: new string[] { "Notification Db" })
                     .AddRabbitMQ(rabbitConnectionString: rabbitMqSettings.Host)
-                    .AddUrlGroup(new Uri("https://localhost:44341/mail"));
+                    .AddUrlGroup(new Uri("https://localhost:44341/Mail"));
 
             services.AddHealthChecksUI(setupSettings: setup =>
             {
@@ -52,7 +53,9 @@ namespace PS.Notification.Api
 
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "PS.Notification.Api", Version = "v1" });
+                c.SwaggerDoc("default", new OpenApiInfo { Title = "PS.Notification.Api", Version = "v1", Description = "This api provides operations for sending notifications." });
+                c.DescribeAllParametersInCamelCase();
+                c.UseInlineDefinitionsForEnums();
             });
         }
 
@@ -63,7 +66,15 @@ namespace PS.Notification.Api
             {
                 app.UseDeveloperExceptionPage();
                 app.UseSwagger();
-                app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "PS.Notification.Api v1"));
+
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/default/swagger.json", "PS.Notification.Api v1");
+                    c.DocumentTitle = "Procedurment Solutions - Notification Api";
+                    c.DisplayRequestDuration();
+                    c.EnableFilter();
+                    c.DocExpansion(DocExpansion.None);
+                });
             }
 
             app.UseHttpsRedirection();
